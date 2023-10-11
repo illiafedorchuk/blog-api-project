@@ -15,7 +15,6 @@ exports.createComment = catchAsync(async (req, res, next) => {
   }
 
   const user = req.user.id;
-  console.log(user);
   const content = {
     post_id: poster.id,
     content: req.body.content,
@@ -68,7 +67,7 @@ exports.getOneComment = catchAsync(async (req, res) => {
 
 // get comment for post
 exports.getCommentForPost = catchAsync(async (req, res) => {
-  console.log(req.params.id);
+
   const comment = await Comment.findAll({
     where: {
       post_id: req.params.id,

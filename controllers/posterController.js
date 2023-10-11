@@ -67,7 +67,7 @@ exports.updatePoster = async (req, res) => {
   const posterId = req.params.id;
   const poster = await Poster.findByPk(posterId);
   const userId = req.user.id;
-  console.log(userId);
+
 
 
   if (!poster) {
