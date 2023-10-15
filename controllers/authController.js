@@ -8,7 +8,7 @@ const sequelize = require("sequelize");
 
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError.js");
-const sendEmail = require('./../utils/email.js');
+const sendEmail = require("./../utils/email.js");
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -146,67 +146,87 @@ exports.logout = (req, res) => {
   });
 };
 
-exports.forgotPassword =catchAsync( async (req, res, next) => {
-    // 1) Get user based on POSTed email
-    const user = await User.findOne({ where: { email: req.body.email } });
-    if (!user) {
-      return next(new AppError('There is no user with the email address.', 404));
-    }
-    
-    // 2) Generate the random reset token
-    const resetToken = await user.createPasswordResetToken();
-    await user.save({ fields: ['passwordResetToken', 'passwordResetExpires'], validate: false });
-    const resetURL = `${req.protocol}://${req.get(
-      'host'
-    )}/api/v1/users/resetPassword/${resetToken}`;
-    
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
-    await user.save({ fields: ['passwordResetToken', 'passwordResetExpires'], validate: false });
-    // 3) Send it to user's email
-    const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
-  
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: 'Your password reset token (valid for 10 min)',
-        message: message
-      });
-  
-      res.status(200).json({
-        status: 'success',
-        message: 'Token sent to email!'
-      });
-    } catch (err) {
-      user.passwordResetToken = undefined;
-      user.passwordResetExpires = undefined;
-      await user.save({ validateBeforeSave: false });
-  
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // 1) Get user based on POSTed email
+  const user = await User.findOne({ where: { email: req.body.email } });
+  if (!user) {
+    return next(new AppError("There is no user with the email address.", 404));
+  }
+
+  // 2) Generate the random reset token
+  const resetToken = await user.createPasswordResetToken();
+  await user.save({
+    fields: ["passwordResetToken", "passwordResetExpires"],
+    validate: false,
+  });
+  const resetURL = `${req.protocol}://${req.get(
+    "host"
+  )}/api/v1/users/resetPassword/${resetToken}`;
+
+  user.passwordResetToken = resetToken;
+  user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
+  await user.save({
+    fields: ["passwordResetToken", "passwordResetExpires"],
+    validate: false,
+  });
+  // 3) Send it to user's email
+  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
+
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: "Your password reset token (valid for 10 min)",
+      message: message,
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Token sent to email!",
+    });
+  } catch (err) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(
+      new AppError("There was an error sending the email. Try again later!"),
+      500
+    );
+  }
+});
+
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  const user = await User.findOne({
+    where: {
+      passwordResetToken: req.params.token,
+      passwordResetExpires: { [sequelize.Op.gt]: Date.now() },
+    },
+  });
+  // 2) If token has not expired, and there is user, set the new password
+  if (!user) {
+    return next(new AppError("Token is invalid or has expired", 400));
+  }
+  if (req.body.password == user.password) {
+    return next(new AppError("You cant use the same password!", 400));
+  }
+
+  user.password = req.body.password;
+
+  user.passwordResetToken = null;
+  user.passwordResetExpires = null;
+  await user.save();
+
+  createSendToken(user, 200, res);
+});
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
       return next(
-        new AppError('There was an error sending the email. Try again later!'),
-        500
+        new AppError("You do not have permission to perform this action", 403)
       );
     }
-  });
 
-
-  exports.resetPassword = catchAsync(async (req, res, next) => {
-    const user = await User.findOne({
-      where: { passwordResetToken: req.params.token, passwordResetExpires: { [sequelize.Op.gt]: Date.now() } }
-    });
-    // 2) If token has not expired, and there is user, set the new password
-    if (!user) {
-      return next(new AppError('Token is invalid or has expired', 400));
-    }
-    if(req.body.password == user.password){
-      return next(new AppError('You cant use the same password!', 400));
-    }
-
-    user.password = req.body.password;
- 
-    user.passwordResetToken = null;
-    user.passwordResetExpires = null;
-    await user.save();
-  
-    createSendToken(user, 200, res);
-  });
+    next();
+  };
+};

@@ -8,7 +8,7 @@ const app = express();
 const dotenv = require("dotenv");
 const mysql = require("mysql2");
 const db = require("./models");
-
+const helmet = require("helmet");
 
 dotenv.config({ path: "./config.env" });
 const posterRouter = require("./routes/posterRouter.js");
@@ -25,6 +25,7 @@ app.use(globalErrorHandler);
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.json({ limit: "10kb" }));
+app.use(helmet());
 
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();

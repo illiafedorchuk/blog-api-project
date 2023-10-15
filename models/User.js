@@ -30,7 +30,7 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         notEmpty: true,
         len: [8, 100],
-      },    
+      },
     },
     role: {
       type: DataTypes.STRING,
@@ -43,26 +43,22 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
-    passwordResetToken: 
-    {type: DataTypes.STRING,
-      defaultValue: null
-    },
+    passwordResetToken: { type: DataTypes.STRING, defaultValue: null },
     passwordResetExpires: {
       type: DataTypes.DATE,
-      defaultValue: null
-    }
+      defaultValue: null,
+    },
   });
 
   User.beforeCreate(async (user, options) => {
     user.password = await bcrypt.hash(user.password, 12);
   });
-  
+
   User.beforeUpdate(async (user, options) => {
     if (user.changed("password")) {
-     user.password = await bcrypt.hash(user.password, 12);
+      user.password = await bcrypt.hash(user.password, 12);
     }
   });
-  
 
   User.prototype.correctPassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
@@ -73,10 +69,10 @@ module.exports = (sequelize, DataTypes) => {
       const changedTimestamp = Math.floor(
         this.passwordChangedAt.getTime() / 1000
       );
-  
+
       return JWTTimestamp < changedTimestamp;
     }
-  
+
     // False means NOT changed
     return false;
   };
@@ -92,6 +88,16 @@ module.exports = (sequelize, DataTypes) => {
     this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
     return resetToken;
+  };
+  User.prototype.toJSON = function () {
+    const user = { ...this.get() };
+    // Exclude sensitive fields
+    delete user.password;
+    delete user.passwordResetToken;
+    delete user.passwordResetExpires;
+    delete user.createdAt;
+    delete user.updatedAt;
+    return user;
   };
 
   return User;

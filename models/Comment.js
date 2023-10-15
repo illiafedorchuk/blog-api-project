@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Comment = sequelize.define("Comment", {
-    user_id: {
+    author: {
       type: DataTypes.STRING,
       validate: {
         notEmpty: true,
@@ -22,5 +22,13 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.NOW,
     },
   });
+
+  Comment.prototype.toJSON = function () {
+    const comm = { ...this.get() };
+    // Exclude sensitive fields
+    delete comm.createdAt;
+    delete comm.updatedAt;
+    return comm;
+  };
   return Comment;
 };

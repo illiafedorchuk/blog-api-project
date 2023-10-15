@@ -50,7 +50,7 @@ db.Sequelize = Sequelize;
 db.Poster.hasMany(db.Comment, { foreignKey: "post_id", as: "comments" });
 db.Comment.belongsTo(db.Poster, { foreignKey: "id", as: "posters" });
 
-db.User.hasMany(db.Comment, { foreignKey: "user_id", as: "comments" });
+db.User.hasMany(db.Comment, { foreignKey: "author", as: "comments" });
 db.Comment.belongsTo(db.User, { foreignKey: "id", as: "users" });
 
 db.User.hasMany(db.Poster, { foreignKey: "author", as: "posters" });

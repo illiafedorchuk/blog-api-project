@@ -2,9 +2,17 @@ const express = require("express");
 const db = require("../models");
 const AppError = require("../utils/appError.js");
 const catchAsync = require("../utils/catchAsync");
+const factory = require("./controllerFactory");
 const User = db.User;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Delete user
+exports.deleteUser = factory.deleteOne(User);
+// Get all users
+exports.getAllUsers = factory.getAll(User);
+// Get one user
+exports.getUserById = factory.getOne(User);
 
 const filterObj = (obj, ...allowedFields) => {
   const newObj = {};
@@ -14,27 +22,7 @@ const filterObj = (obj, ...allowedFields) => {
   return newObj;
 };
 
-exports.getAllUsers = async (req, res) => {
-  const users = await User.findAll();
-  res.status(200).json({
-    status: "success",
-    results: users.length,
-    data: {
-      users,
-    },
-  });
-};
-
-exports.getUserById = catchAsync(async (req, res) => {
-  const user = await User.findByPk(req.params.id);
-  res.status(200).json({
-    status: "success",
-    data: {
-      user,
-    },
-  });
-});
-
+// Update user
 exports.updateMe = catchAsync(async (req, res, next) => {
   // 1) Create error if user POSTs password data
   if (req.body.password || req.body.passwordConfirm) {
@@ -72,11 +60,10 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   });
 });
 
+// Get current user
 exports.getMe = catchAsync(async (req, res, next) => {
-  // Отримати ідентифікатор поточного користувача з req.user
   const userId = req.user.id;
 
-  // Знайти користувача за ідентифікатором
   const user = await User.findByPk(userId);
   user.password = undefined;
   res.status(200).json({
